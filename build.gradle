@@ -1,0 +1,32 @@
+plugins {
+    id 'java'
+}
+
+group = 'com.nixiedroid'
+version = ''
+archivesBaseName = 'URLWrapper'
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+jar {
+    manifest {
+        attributes('Premain-Class': 'com.nixiedroid.urlWrapper.Agent',
+                'Can-Retransform-Classes': 'true',
+                'Main-Class': 'com.nixiedroid.authServer.Main')
+    }
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.9.1')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+test {
+    useJUnitPlatform()
+}
