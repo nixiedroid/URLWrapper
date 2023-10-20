@@ -1,28 +1,36 @@
 package com.nixiedroid.urlWrapper;
 
-import com.nixiedroid.urlWrapper.url.URLStreamHandlerReset;
-@SuppressWarnings("unused")
+import java.lang.instrument.Instrumentation;
+import java.lang.management.ManagementFactory;
+import java.util.jar.JarFile;
+
 public class Agent {
+    private static final int JAVA_COMPILE_VERSION = 17;
 
-    public static void premain(String args) {
-        if (getJavaVersion() != 8) throw new RuntimeException("Java 8 Required");
-        LOG.i("Doing Magic");
-        URLStreamHandlerReset.reset();
-        FilePreloader.load("/SampleFile.txt");
-    }
+    public static void premain(String args, Instrumentation inst) throws Exception {
+        String agentPath = ManagementFactory.getRuntimeMXBean().getInputArguments().stream()
+                .filter(arg -> arg.startsWith("-javaagent"))
+                .findAny().map(arg -> arg.substring(11))
+                .orElseThrow(() -> new RuntimeException("Current javaagent jar path not found"));
 
-    /**
-     * Returns the Java version as an int value.
-     * @return the Java version as an int value (8, 9, etc.)
-     */
-    private static int getJavaVersion() {
-        String version = System.getProperty("java.version");
-        if (version.startsWith("1.")) {
-            version = version.substring(2);
+
+        if (JavaVersionChecker.getVersion()<JAVA_COMPILE_VERSION){
+            Logger.log.info("Detected too old java version: " + JavaVersionChecker.getVersion() );
+
+            if (! "true".equals(System.getProperty("urlWrapper.javaVerIgnore", "false"))) {
+                Logger.log.info("Found urlWrapper.javaVerIgnore = true. Ignoring old java version");
+            } else {
+              throw new RuntimeException("Shutting down due to old java version. Use -DurlWrapper.javaVerIgnore=true to override");
+            }
         }
-        int dotPos = version.indexOf('.');
-        int dashPos = version.indexOf('-');
-        return Integer.parseInt(version.substring(0,
-                dotPos > -1 ? dotPos : dashPos > -1 ? dashPos : 1));
+        Logger.log.info("Starting URL Hook");
+        if ("false".equals(System.getProperty("urlWrapper.doRedirect", "false"))) {
+                Logger.log.info("Logging urls only. Without redirect");
+        }
+
+        inst.appendToBootstrapClassLoaderSearch(new JarFile(agentPath));
+        inst.addTransformer(new ServiceTransformer(), true);
+        inst.retransformClasses(java.net.URL.class);
     }
+
 }
