@@ -8,39 +8,40 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.List;
 
-public class URLPatcher {
-
-
-    static {
-        patterns = new ArrayList<>();
-        load(new File("URLWrapper.urls"));
-    }
-
-    private static final ArrayList<Pattern> patterns;
-
+public class URLPatcher
+{
+    private static final List<Pattern> patterns = new ArrayList<>();
 
     private URLPatcher() {
     }
 
-    public static void load(String... config) {
+    private static void fillPattern(String... config) {
         if (config.length % 2 != 0) return;
         for (int i = 0; i < config.length; i += 2) {
             patterns.add(new Pattern(config[i], config[i + 1]));
         }
     }
+    public static void load(String filePath){
+        load(new File(filePath));
+        Logger.log.info("Loaded "+ patterns.size() + " directions");
+    }
 
     public static void load(File configFile) {
         if (configFile.exists()) {
+            Logger.log.info("Loading config file: " + configFile.getAbsolutePath());
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(Files.newInputStream(configFile.toPath())))) {
-                String[] config = reader.lines()
+                String[] configStrings = reader.lines()
                         .map(String::trim)
                         .filter(line -> line.length() > 2 && line.charAt(0) != '#')
                         .toArray(String[]::new);
-                load(config);
+                fillPattern(configStrings);
             } catch (IOException e) {
                 e.printStackTrace();
             }
+        } else {
+            Logger.log.info("Config file not found: " + configFile.getAbsolutePath());
         }
     }
 
@@ -69,4 +70,3 @@ public class URLPatcher {
         }
     }
 }
-
